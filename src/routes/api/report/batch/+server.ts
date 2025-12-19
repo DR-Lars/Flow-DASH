@@ -25,9 +25,11 @@ function toNumber(val: unknown): number | null {
 }
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
+    console.log('Batch report POST endpoint called.');
     try {
         const raw = await request.json();
         if (!Array.isArray(raw)) {
+            console.log('Payload is not an array.');
             return jsonResponse({ success: false, error: 'Payload must be an array of IBatchReport' }, 400);
         }
 
@@ -48,17 +50,17 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
                     standard_density: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_SD_CUR']),
                     raw_density: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
                 };
-
+                console.log('Constructed body for POST:', body);
                 const res = await fetch('/api/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-
+                console.log(`Received response with status ${res.status} for report timestamp ${report.snapshot.ts}`);
                 return { ts: report.snapshot.ts, status: res.status, data: await res.json() };
             })
         );
-
+        console.log('All reports processed.');
         return jsonResponse({ success: true, results }, 201);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
