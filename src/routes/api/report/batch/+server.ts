@@ -28,20 +28,27 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
     console.log('Batch report POST endpoint called.');
     try {
         const raw = await request.json();
-        console.log('Raw JSON payload:', raw); // Log the raw payload for inspection
-        if (!Array.isArray(raw)) {
-            console.log('Payload is not an array.');
-            return jsonResponse({ success: false, error: 'Payload must be an array of IBatchReport' }, 400);
+        console.log('Raw JSON payload:', raw);
+        
+        const meter_id = raw.meter_id;
+        const ship_name = raw.ship_name;
+        const snapshots = raw.snapshots;
+        
+        console.log(`Received batch for ship: ${ship_name}, meter: ${meter_id}`);
+        
+        if (!Array.isArray(snapshots)) {
+            console.log('Snapshots is not an array.');
+            return jsonResponse({ success: false, error: 'Snapshots must be an array of IBatchReport' }, 400);
         }
-        console.log('Payload received:', raw);
-        const payload = raw as IBatchReport[];
-        console.log(`Received ${payload.length} batch reports for processing.`);
+        console.log(`Received ${snapshots.length} batch reports for processing.`);
 
         const results = await Promise.all(
-            payload.map(async (report) => {
+            snapshots.map(async (report) => {
                 console.log(`Posting report with timestamp ${report.snapshot.ts}`);
 
                 const body = {
+                    meter_id: meter_id,
+                    ship_name: ship_name,
                     timestamp: String(report.snapshot.ts ?? ''),
                     temperature: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
                     pressure: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
