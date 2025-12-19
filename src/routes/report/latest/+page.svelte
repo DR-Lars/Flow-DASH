@@ -13,7 +13,7 @@
 
 	onMount(async () => {
 		try {
-			const response = await fetch('/api/data');
+			const response = await fetch('/api/report');
 			const result = await response.json();
 
 			if (result.success && result.data.length > 0) {

@@ -1,4 +1,4 @@
-import type { RequestHandler } from './$types.js';
+import type { RequestHandler } from './$types.ts';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
