@@ -27,8 +27,8 @@ function toNumber(val: unknown): number | null {
 export const POST: RequestHandler = async ({ request, fetch }) => {
     console.log('Batch report POST endpoint called.');
     try {
-        console.log('Parsing JSON payload.', request);
         const raw = await request.json();
+        console.log('Raw JSON payload:', raw); // Log the raw payload for inspection
         if (!Array.isArray(raw)) {
             console.log('Payload is not an array.');
             return jsonResponse({ success: false, error: 'Payload must be an array of IBatchReport' }, 400);
