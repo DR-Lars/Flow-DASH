@@ -1,6 +1,9 @@
 import type { RequestHandler } from './$types.ts';
 import type { IBatchReport } from '$lib/interfaces';
+import { Pool } from 'pg';
 import 'dotenv/config';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 function jsonResponse(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -24,7 +27,7 @@ function toNumber(val: unknown): number | null {
     return null;
 }
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ request }) => {
     console.log('Batch report POST endpoint called.');
     try {
         const raw = await request.json();
@@ -42,36 +45,33 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
         }
         console.log(`Received ${snapshots.length} batch reports for processing.`);
 
-        const results = await Promise.all(
-            snapshots.map(async (report) => {
-                console.log(`Posting report with timestamp ${report.snapshot.ts}`);
+        // Transform all reports
+        const reports = snapshots.map((report) => [
+            meter_id,
+            ship_name,
+            String(report.snapshot.ts ?? ''),
+            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
+            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
+            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_MASSR_CUR']),
+            toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_AERATION_CUR']),
+            toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_MASS_TOTAL']),
+            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_SD_CUR']),
+            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
+        ]);
 
-                const body = {
-                    meter_id: meter_id,
-                    ship_name: ship_name,
-                    timestamp: String(report.snapshot.ts ?? ''),
-                    temperature: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
-                    pressure: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
-                    mass_flow: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_MASSR_CUR']),
-                    air_index: toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_AERATION_CUR']),
-                    total_quantity: toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_MASS_TOTAL']),
-                    standard_density: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_SD_CUR']),
-                    raw_density: toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
-                };
-                console.log('Constructed body for POST:', body);
-                const res = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                console.log(`Received response with status ${res.status} for report timestamp ${report.snapshot.ts}`);
-                return { ts: report.snapshot.ts, status: res.status, data: await res.json() };
-            })
+        // Insert all reports in a single batch query
+        const result = await pool.query(
+            `INSERT INTO report (meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+             VALUES ${reports.map((_, i) => `($${i * 10 + 1}, $${i * 10 + 2}, $${i * 10 + 3}, $${i * 10 + 4}, $${i * 10 + 5}, $${i * 10 + 6}, $${i * 10 + 7}, $${i * 10 + 8}, $${i * 10 + 9}, $${i * 10 + 10})`).join(', ')}
+             RETURNING id`,
+            reports.flat()
         );
-        console.log('All reports processed.');
-        return jsonResponse({ success: true, results }, 201);
+
+        console.log(`Inserted ${result.rows.length} reports.`);
+        return jsonResponse({ success: true, inserted: result.rows.length, ids: result.rows.map(r => r.id) }, 201);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return jsonResponse({ success: false, error: 'Invalid JSON payload', details: message }, 400);
+        console.error('Error inserting batch reports:', message);
+        return jsonResponse({ success: false, error: 'Batch insert failed', details: message }, 400);
     }
 };
