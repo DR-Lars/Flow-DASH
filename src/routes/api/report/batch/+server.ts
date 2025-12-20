@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types.ts';
-import type { IBatchReport } from '$lib/interfaces';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
