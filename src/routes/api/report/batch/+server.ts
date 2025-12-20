@@ -101,8 +101,8 @@ export const GET: RequestHandler = async ({ url }) => {
     try {
         const meter_id = url.searchParams.get('meter_id');
         const ship_name = url.searchParams.get('ship_name');
-        const timestamp = url.searchParams.get('timestamp');
-        const limitParam = url.searchParams.get('limit');
+        const from = url.searchParams.get('from');
+        const to = url.searchParams.get('to');
 
         const conditions: string[] = [];
         const values: Array<string | number> = [];
@@ -115,9 +115,13 @@ export const GET: RequestHandler = async ({ url }) => {
             values.push(ship_name);
             conditions.push(`ship = $${values.length}`);
         }
-        if (timestamp) {
-            values.push(timestamp);
-            conditions.push(`timestamp = $${values.length}`);
+        if (from) {
+            values.push(from);
+            conditions.push(`timestamp >= $${values.length}`);
+        }
+        if (to) {
+            values.push(to);
+            conditions.push(`timestamp <= $${values.length}`);
         }
 
         let sql = 'SELECT * FROM public.report';
@@ -125,17 +129,6 @@ export const GET: RequestHandler = async ({ url }) => {
             sql += ' WHERE ' + conditions.join(' AND ');
         }
         sql += ' ORDER BY timestamp DESC';
-
-        let limit = 100;
-        if (limitParam) {
-            const parsed = Number(limitParam);
-            if (Number.isFinite(parsed) && parsed > 0 && parsed <= 20000) {
-                limit = parsed;
-            }
-        }
-
-        values.push(limit);
-        sql += ` LIMIT $${values.length}`;
 
         const result = await pool.query(sql, values);
         return jsonResponse({ success: true, data: result.rows });
