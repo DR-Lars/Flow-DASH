@@ -27,23 +27,23 @@ function toNumber(val: unknown): number | null {
     return null;
 }
 
+const BATCH_SIZE = 500; // 500 reports per database insert
+
 export const POST: RequestHandler = async ({ request }) => {
     console.log('Batch report POST endpoint called.');
     try {
         const raw = await request.json();
-        console.log('Raw JSON payload:', raw);
+        console.log('Raw JSON payload received');
         
         const meter_id = raw.meter_id;
         const ship_name = raw.ship_name;
         const snapshots = raw.snapshots;
         
-        console.log(`Received batch for ship: ${ship_name}, meter: ${meter_id}`);
+        console.log(`Received batch for ship: ${ship_name}, meter: ${meter_id}, snapshots: ${snapshots.length}`);
         
         if (!Array.isArray(snapshots)) {
-            console.log('Snapshots is not an array.');
-            return jsonResponse({ success: false, error: 'Snapshots must be an array of IBatchReport' }, 400);
+            return jsonResponse({ success: false, error: 'Snapshots must be an array' }, 400);
         }
-        console.log(`Received ${snapshots.length} batch reports for processing.`);
 
         // Transform all reports
         const reports = snapshots.map((report) => [
@@ -59,19 +59,37 @@ export const POST: RequestHandler = async ({ request }) => {
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
         ]);
 
-        // Insert all reports in a single batch query
-        const result = await pool.query(
-            `INSERT INTO report (meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
-             VALUES ${reports.map((_, i) => `($${i * 10 + 1}, $${i * 10 + 2}, $${i * 10 + 3}, $${i * 10 + 4}, $${i * 10 + 5}, $${i * 10 + 6}, $${i * 10 + 7}, $${i * 10 + 8}, $${i * 10 + 9}, $${i * 10 + 10})`).join(', ')}
-             RETURNING id`,
-            reports.flat()
-        );
+        let totalInserted = 0;
+        const allIds: number[] = [];
 
-        console.log(`Inserted ${result.rows.length} reports.`);
-        return jsonResponse({ success: true, inserted: result.rows.length, ids: result.rows.map(r => r.id) }, 201);
+        // Process in chunks
+        for (let i = 0; i < reports.length; i += BATCH_SIZE) {
+            const chunk = reports.slice(i, i + BATCH_SIZE);
+            const chunkNum = Math.floor(i / BATCH_SIZE) + 1;
+            
+            try {
+                const result = await pool.query(
+                    `INSERT INTO report (meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+                     VALUES ${chunk.map((_, idx) => `($${idx * 10 + 1}, $${idx * 10 + 2}, $${idx * 10 + 3}, $${idx * 10 + 4}, $${idx * 10 + 5}, $${idx * 10 + 6}, $${idx * 10 + 7}, $${idx * 10 + 8}, $${idx * 10 + 9}, $${idx * 10 + 10})`).join(', ')}
+                     RETURNING id`,
+                    chunk.flat()
+                );
+
+                totalInserted += result.rows.length;
+                allIds.push(...result.rows.map(r => r.id));
+                console.log(`Chunk ${chunkNum}: Inserted ${result.rows.length} reports`);
+            } catch (chunkErr) {
+                const msg = chunkErr instanceof Error ? chunkErr.message : String(chunkErr);
+                console.error(`Chunk ${chunkNum} failed:`, msg);
+                throw new Error(`Chunk ${chunkNum} failed: ${msg}`);
+            }
+        }
+
+        console.log(`Total inserted: ${totalInserted} reports`);
+        return jsonResponse({ success: true, inserted: totalInserted }, 201);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error('Error inserting batch reports:', message);
-        return jsonResponse({ success: false, error: 'Batch insert failed', details: message }, 400);
+        return jsonResponse({ success: false, error: message }, 400);
     }
 };
