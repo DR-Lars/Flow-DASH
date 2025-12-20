@@ -92,3 +92,55 @@ export const POST: RequestHandler = async ({ request }) => {
         return jsonResponse({ success: false, error: message }, 400);
     }
 };
+
+export const GET: RequestHandler = async ({ url }) => {
+    if (!process.env.DATABASE_URL) {
+        return jsonResponse({ success: false, error: 'DATABASE_URL not set (database not configured)' }, 500);
+    }
+
+    try {
+        const meter_id = url.searchParams.get('meter_id');
+        const ship_name = url.searchParams.get('ship_name');
+        const timestamp = url.searchParams.get('timestamp');
+        const limitParam = url.searchParams.get('limit');
+
+        const conditions: string[] = [];
+        const values: Array<string | number> = [];
+
+        if (meter_id) {
+            values.push(meter_id);
+            conditions.push(`meter = $${values.length}`);
+        }
+        if (ship_name) {
+            values.push(ship_name);
+            conditions.push(`ship = $${values.length}`);
+        }
+        if (timestamp) {
+            values.push(timestamp);
+            conditions.push(`timestamp = $${values.length}`);
+        }
+
+        let sql = 'SELECT * FROM public.report';
+        if (conditions.length) {
+            sql += ' WHERE ' + conditions.join(' AND ');
+        }
+        sql += ' ORDER BY timestamp DESC';
+
+        let limit = 100;
+        if (limitParam) {
+            const parsed = Number(limitParam);
+            if (Number.isFinite(parsed) && parsed > 0 && parsed <= 20000) {
+                limit = parsed;
+            }
+        }
+
+        values.push(limit);
+        sql += ` LIMIT $${values.length}`;
+
+        const result = await pool.query(sql, values);
+        return jsonResponse({ success: true, data: result.rows });
+    } catch (error) {
+        const errInfo = error instanceof Error ? { message: error.message || 'Empty error message', stack: error.stack } : { message: String(error) };
+        return jsonResponse({ success: false, error: errInfo.message, details: errInfo.stack ?? null }, 500);
+    }
+};
