@@ -75,8 +75,8 @@
 	<!-- Filters -->
 	<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 		<div>
-			<label class="block text-sm mb-1">Meter</label>
-			<select bind:value={meter_id} class="border rounded w-full p-2" on:change={loadData}>
+			<label for="meter-select" class="block text-sm mb-1">Meter</label>
+			<select id="meter-select" bind:value={meter_id} class="border rounded w-full p-2" on:change={loadData}>
 				<option value="">All meters</option>
 				{#each meters as m}
 					<option value={m}>{m}</option>
@@ -84,8 +84,8 @@
 			</select>
 		</div>
 		<div>
-			<label class="block text-sm mb-1">Ship</label>
-			<select bind:value={ship_name} class="border rounded w-full p-2" on:change={loadData}>
+			<label for="ship-select" class="block text-sm mb-1">Ship</label>
+			<select id="ship-select" bind:value={ship_name} class="border rounded w-full p-2" on:change={loadData}>
 				<option value="">All ships</option>
 				{#each ships as s}
 					<option value={s}>{s}</option>
@@ -93,12 +93,12 @@
 			</select>
 		</div>
 		<div>
-			<label class="block text-sm mb-1">From</label>
-			<input type="datetime-local" bind:value={fromTs} class="border rounded w-full p-2" on:change={loadData} />
+			<label for="from-input" class="block text-sm mb-1">From</label>
+			<input id="from-input" type="datetime-local" bind:value={fromTs} class="border rounded w-full p-2" on:change={loadData} />
 		</div>
 		<div>
-			<label class="block text-sm mb-1">To</label>
-			<input type="datetime-local" bind:value={toTs} class="border rounded w-full p-2" on:change={loadData} />
+			<label for="to-input" class="block text-sm mb-1">To</label>
+			<input id="to-input" type="datetime-local" bind:value={toTs} class="border rounded w-full p-2" on:change={loadData} />
 		</div>
 	</div>
 
