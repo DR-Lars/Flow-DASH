@@ -5,6 +5,7 @@
 		id?: number;
 		meter: string | number;
 		ship: string;
+		batch_number: string | number;
 		timestamp: string;
 		temperature: number | null;
 		pressure: number | null;
@@ -22,17 +23,20 @@
 	// Filters
 	let meter_id: string = '';
 	let ship_name: string = '';
+	let batch_number: string = '';
 	let fromTs: string = '';
 	let toTs: string = '';
 
 	// Menu options (derived from data)
 	let meters: string[] = [];
 	let ships: string[] = [];
+	let batches: string[] = [];
 
 	function buildUrl() {
 		const params = new URLSearchParams();
 		if (meter_id) params.set('meter_id', meter_id);
 		if (ship_name) params.set('ship_name', ship_name);
+		if (batch_number) params.set('batch_number', batch_number);
 		if (fromTs) params.set('from', fromTs);
 		if (toTs) params.set('to', toTs);
 		return `/api/report/batch?${params.toString()}`;
@@ -51,6 +55,7 @@
 			// Populate menu options from current dataset
 			meters = Array.from(new Set(data.map((r) => String(r.meter)))).filter(Boolean).sort();
 			ships = Array.from(new Set(data.map((r) => String(r.ship)))).filter(Boolean).sort();
+			batches = Array.from(new Set(data.map((r) => String(r.batch_number)))).filter(Boolean).sort();
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -61,6 +66,7 @@
 	function resetFilters() {
 		meter_id = '';
 		ship_name = '';
+		batch_number = '';
 		fromTs = '';
 		toTs = '';
 		loadData();
@@ -93,6 +99,15 @@
 			</select>
 		</div>
 		<div>
+			<label for="batch-select" class="block text-sm mb-1">Batch</label>
+			<select id="batch-select" bind:value={batch_number} class="border rounded w-full p-2" on:change={loadData}>
+				<option value="">All batches</option>
+				{#each batches as b}
+					<option value={b}>{b}</option>
+				{/each}
+			</select>
+		</div>
+		<div>
 			<label for="from-input" class="block text-sm mb-1">From</label>
 			<input id="from-input" type="datetime-local" bind:value={fromTs} class="border rounded w-full p-2" on:change={loadData} />
 		</div>
@@ -119,8 +134,7 @@
 			<thead class="bg-gray-50">
 				<tr>
 					<th class="px-3 py-2 text-left">Meter</th>
-					<th class="px-3 py-2 text-left">Ship</th>
-					<th class="px-3 py-2 text-left">Timestamp</th>
+					<th class="px-3 py-2 text-left">Ship</th>				<th class="px-3 py-2 text-left">Batch</th>					<th class="px-3 py-2 text-left">Timestamp</th>
 					<th class="px-3 py-2 text-left">Temperature</th>
 					<th class="px-3 py-2 text-left">Pressure</th>
 					<th class="px-3 py-2 text-left">Mass Flow</th>
@@ -134,8 +148,7 @@
 				{#each data as row}
 					<tr class="border-t">
 						<td class="px-3 py-2">{row.meter}</td>
-						<td class="px-3 py-2">{row.ship}</td>
-						<td class="px-3 py-2">{new Date(row.timestamp).toLocaleString()}</td>
+						<td class="px-3 py-2">{row.ship}</td>					<td class="px-3 py-2">{row.batch_number}</td>						<td class="px-3 py-2">{new Date(row.timestamp).toLocaleString()}</td>
 						<td class="px-3 py-2">{row.temperature ?? ''}</td>
 						<td class="px-3 py-2">{row.pressure ?? ''}</td>
 						<td class="px-3 py-2">{row.mass_flow ?? ''}</td>

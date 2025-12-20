@@ -36,9 +36,10 @@ export const POST: RequestHandler = async ({ request }) => {
         
         const meter_id = raw.meter_id;
         const ship_name = raw.ship_name;
+        const batch_number = raw.batch_number;
         const snapshots = raw.snapshots;
         
-        console.log(`Received batch for ship: ${ship_name}, meter: ${meter_id}, snapshots: ${snapshots.length}`);
+        console.log(`Received batch for ship: ${ship_name}, meter: ${meter_id}, batch: ${batch_number}, snapshots: ${snapshots.length}`);
         
         if (!Array.isArray(snapshots)) {
             return jsonResponse({ success: false, error: 'Snapshots must be an array' }, 400);
@@ -48,6 +49,7 @@ export const POST: RequestHandler = async ({ request }) => {
         const reports = snapshots.map((report) => [
             meter_id,
             ship_name,
+            batch_number,
             String(report.snapshot.ts ?? ''),
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
@@ -68,8 +70,8 @@ export const POST: RequestHandler = async ({ request }) => {
             
             try {
                 const result = await pool.query(
-                    `INSERT INTO report (meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
-                     VALUES ${chunk.map((_, idx) => `($${idx * 10 + 1}, $${idx * 10 + 2}, $${idx * 10 + 3}, $${idx * 10 + 4}, $${idx * 10 + 5}, $${idx * 10 + 6}, $${idx * 10 + 7}, $${idx * 10 + 8}, $${idx * 10 + 9}, $${idx * 10 + 10})`).join(', ')}
+                    `INSERT INTO report (meter, ship, batch_number, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+                     VALUES ${chunk.map((_, idx) => `($${idx * 11 + 1}, $${idx * 11 + 2}, $${idx * 11 + 3}, $${idx * 11 + 4}, $${idx * 11 + 5}, $${idx * 11 + 6}, $${idx * 11 + 7}, $${idx * 11 + 8}, $${idx * 11 + 9}, $${idx * 11 + 10}, $${idx * 11 + 11})`).join(', ')}
                      RETURNING id`,
                     chunk.flat()
                 );
@@ -101,6 +103,7 @@ export const GET: RequestHandler = async ({ url }) => {
     try {
         const meter_id = url.searchParams.get('meter_id');
         const ship_name = url.searchParams.get('ship_name');
+        const batch_number = url.searchParams.get('batch_number');
         const from = url.searchParams.get('from');
         const to = url.searchParams.get('to');
 
@@ -114,6 +117,10 @@ export const GET: RequestHandler = async ({ url }) => {
         if (ship_name) {
             values.push(ship_name);
             conditions.push(`ship = $${values.length}`);
+        }
+        if (batch_number) {
+            values.push(batch_number);
+            conditions.push(`batch_number = $${values.length}`);
         }
         if (from) {
             values.push(from);
