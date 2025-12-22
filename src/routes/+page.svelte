@@ -76,10 +76,8 @@
 </script>
 
 <div class="p-4 space-y-4">
-	<h1 class="text-2xl font-semibold">Welcome to Flow DASH</h1>
-
 	<!-- Filters -->
-	<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+	<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
 		<div>
 			<label for="meter-select" class="block text-sm mb-1">Meter</label>
 			<select id="meter-select" bind:value={meter_id} class="border rounded w-full p-2" on:change={loadData}>
