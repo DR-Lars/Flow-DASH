@@ -45,20 +45,75 @@ export const POST: RequestHandler = async ({ request }) => {
             return jsonResponse({ success: false, error: 'Snapshots must be an array' }, 400);
         }
 
-        // Transform all reports - keep timestamp as-is for proper PostgreSQL timestamp handling
-        const reports = snapshots.map((report) => [
-            meter_id,
-            ship_name,
-            batch_number,
-            report.snapshot.ts, // Don't convert to string, let PostgreSQL handle timestamp conversion
-            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
-            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
-            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_MASSR_CUR']),
-            toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_AERATION_CUR']),
-            toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_MASS_TOTAL']),
-            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_SD_CUR']),
-            toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
-        ]);
+        // Transform all reports, normalize timestamp and ship name
+        const rawReports = snapshots.map((report) => {
+            const tsRaw = (report as any).snapshot?.ts;
+            let ts: Date | null = null;
+            if (tsRaw != null) {
+                if (tsRaw instanceof Date) ts = tsRaw;
+                else if (typeof tsRaw === 'number') ts = new Date(tsRaw);
+                else if (typeof tsRaw === 'string') ts = new Date(tsRaw);
+            }
+            return [
+                meter_id,
+                typeof ship_name === 'string' ? ship_name.trim() : ship_name,
+                batch_number,
+                ts,
+                toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
+                toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
+                toNumber(report.snapshot.tags?.['LM_Run1!RUN1_MASSR_CUR']),
+                toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_AERATION_CUR']),
+                toNumber(report.snapshot.tags?.['BB_MiMO!RUN1_MASS_TOTAL']),
+                toNumber(report.snapshot.tags?.['LM_Run1!RUN1_SD_CUR']),
+                toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
+            ];
+        });
+
+        // Deduplicate within the payload by unique index key (meter, ship, batch_number, timestamp)
+        const seen = new Set<string>();
+        const reports = [] as Array<[
+            typeof meter_id,
+            typeof ship_name,
+            typeof batch_number,
+            Date | null,
+            number | null,
+            number | null,
+            number | null,
+            number | null,
+            number | null,
+            number | null,
+            number | null
+        ]>;
+        let invalidTs = 0;
+        for (const r of rawReports) {
+            const m = r[0];
+            const s = r[1] as string;
+            const b = r[2];
+            const ts = r[3] as Date | null;
+            const tsKey = ts instanceof Date ? ts.getTime() : NaN;
+            if (!Number.isFinite(tsKey)) {
+                invalidTs++;
+                continue; // skip invalid timestamps
+            }
+            const key = `${m}|${s}|${b}|${tsKey}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            // push with normalized Date
+            reports.push([
+                m,
+                s,
+                b,
+                new Date(tsKey),
+                r[4] as number | null,
+                r[5] as number | null,
+                r[6] as number | null,
+                r[7] as number | null,
+                r[8] as number | null,
+                r[9] as number | null,
+                r[10] as number | null
+            ]);
+        }
+        console.log(`Payload prepared: total=${snapshots.length}, unique=${reports.length}, invalidTs=${invalidTs}`);
 
         // Check and create unique constraint
         let indexExists = false;
@@ -93,7 +148,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Log first timestamp for debugging
         if (reports.length > 0) {
-            console.log('Sample timestamp value:', reports[0][3], 'Type:', typeof reports[0][3]);
+            const t = reports[0][3] as Date | null;
+            console.log('Sample timestamp value:', t ? t.toISOString() : null);
         }
 
         // Process in chunks
