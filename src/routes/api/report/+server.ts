@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ url }) => {
         }
         sql += ' ORDER BY timestamp ASC';
 
-        const result = await pool.query('SELECT * FROM public.report ORDER BY timestamp DESC LIMIT 1');
+        const result = await pool.query(sql, values);
         return jsonResponse({ success: true, data: result.rows });
     } catch (error) {
         const errInfo = error instanceof Error ? { message: error.message || 'Empty error message', stack: error.stack } : { message: String(error) };
