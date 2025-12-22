@@ -46,12 +46,38 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 };
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
     if (!process.env.DATABASE_URL) {
         return jsonResponse({ success: false, error: 'DATABASE_URL not set (database not configured)' }, 500);
     }
     try {
-        const result = await pool.query('SELECT * FROM public.report ORDER BY timestamp DESC LIMIT 100');
+        const meter_id = url.searchParams.get('meter_id');
+        const ship_name = url.searchParams.get('ship_name');
+        const batch_number = url.searchParams.get('batch_number');
+
+        const conditions: string[] = [];
+        const values: Array<string | number> = [];
+
+        if (meter_id) {
+            values.push(meter_id);
+            conditions.push(`meter = $${values.length}`);
+        }
+        if (ship_name) {
+            values.push(ship_name);
+            conditions.push(`ship = $${values.length}`);
+        }
+        if (batch_number) {
+            values.push(batch_number);
+            conditions.push(`batch_number = $${values.length}`);
+        }
+
+        let sql = 'SELECT * FROM public.report';
+        if (conditions.length) {
+            sql += ' WHERE ' + conditions.join(' AND ');
+        }
+        sql += ' ORDER BY timestamp ASC';
+
+        const result = await pool.query('SELECT * FROM public.report ORDER BY timestamp DESC LIMIT 1');
         return jsonResponse({ success: true, data: result.rows });
     } catch (error) {
         const errInfo = error instanceof Error ? { message: error.message || 'Empty error message', stack: error.stack } : { message: String(error) };
