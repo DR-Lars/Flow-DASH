@@ -45,12 +45,12 @@ export const POST: RequestHandler = async ({ request }) => {
             return jsonResponse({ success: false, error: 'Snapshots must be an array' }, 400);
         }
 
-        // Transform all reports
+        // Transform all reports - keep timestamp as-is for proper PostgreSQL timestamp handling
         const reports = snapshots.map((report) => [
             meter_id,
             ship_name,
             batch_number,
-            String(report.snapshot.ts ?? ''),
+            report.snapshot.ts, // Don't convert to string, let PostgreSQL handle timestamp conversion
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_TT_CUR']),
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_PT_CUR_GAUGE']),
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_MASSR_CUR']),
@@ -60,8 +60,41 @@ export const POST: RequestHandler = async ({ request }) => {
             toNumber(report.snapshot.tags?.['LM_Run1!RUN1_DT_CUR'])
         ]);
 
+        // Check and create unique constraint
+        let indexExists = false;
+        try {
+            const checkIndex = await pool.query(`
+                SELECT indexname FROM pg_indexes 
+                WHERE tablename = 'report' AND indexname = 'report_unique_key'
+            `);
+            indexExists = checkIndex.rows.length > 0;
+            console.log(`Unique index exists: ${indexExists}`);
+            
+            if (!indexExists) {
+                console.log('Creating unique index...');
+                await pool.query(`
+                    CREATE UNIQUE INDEX report_unique_key 
+                    ON report (meter, ship, batch_number, timestamp)
+                `);
+                console.log('Unique index created successfully');
+                indexExists = true;
+            }
+        } catch (indexErr) {
+            const msg = indexErr instanceof Error ? indexErr.message : String(indexErr);
+            console.error('Index creation failed:', msg);
+            if (msg.includes('could not create unique index') || msg.includes('duplicate')) {
+                console.log('Cannot create index due to existing duplicates. Will check manually for each insert.');
+            }
+        }
+
         let totalInserted = 0;
+        let totalSkipped = 0;
         const allIds: number[] = [];
+
+        // Log first timestamp for debugging
+        if (reports.length > 0) {
+            console.log('Sample timestamp value:', reports[0][3], 'Type:', typeof reports[0][3]);
+        }
 
         // Process in chunks
         for (let i = 0; i < reports.length; i += BATCH_SIZE) {
@@ -69,16 +102,45 @@ export const POST: RequestHandler = async ({ request }) => {
             const chunkNum = Math.floor(i / BATCH_SIZE) + 1;
             
             try {
-                const result = await pool.query(
-                    `INSERT INTO report (meter, ship, batch_number, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
-                     VALUES ${chunk.map((_, idx) => `($${idx * 11 + 1}, $${idx * 11 + 2}, $${idx * 11 + 3}, $${idx * 11 + 4}, $${idx * 11 + 5}, $${idx * 11 + 6}, $${idx * 11 + 7}, $${idx * 11 + 8}, $${idx * 11 + 9}, $${idx * 11 + 10}, $${idx * 11 + 11})`).join(', ')}
-                     RETURNING id`,
-                    chunk.flat()
-                );
+                let result;
+                if (indexExists) {
+                    // Use ON CONFLICT if index exists
+                    result = await pool.query(
+                        `INSERT INTO report (meter, ship, batch_number, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+                         VALUES ${chunk.map((_, idx) => `($${idx * 11 + 1}, $${idx * 11 + 2}, $${idx * 11 + 3}, $${idx * 11 + 4}, $${idx * 11 + 5}, $${idx * 11 + 6}, $${idx * 11 + 7}, $${idx * 11 + 8}, $${idx * 11 + 9}, $${idx * 11 + 10}, $${idx * 11 + 11})`).join(', ')}
+                         ON CONFLICT (meter, ship, batch_number, timestamp) DO NOTHING
+                         RETURNING id`,
+                        chunk.flat()
+                    );
+                } else {
+                    // Manually check for duplicates if no index
+                    const timestamps = chunk.map(r => r[3]);
+                    const existingCheck = await pool.query(
+                        `SELECT timestamp FROM report 
+                         WHERE meter = $1 AND ship = $2 AND batch_number = $3 AND timestamp = ANY($4)`,
+                        [meter_id, ship_name, batch_number, timestamps]
+                    );
+                    const existingSet = new Set(existingCheck.rows.map(r => r.timestamp));
+                    const newChunk = chunk.filter(r => !existingSet.has(r[3]));
+                    
+                    if (newChunk.length > 0) {
+                        result = await pool.query(
+                            `INSERT INTO report (meter, ship, batch_number, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+                             VALUES ${newChunk.map((_, idx) => `($${idx * 11 + 1}, $${idx * 11 + 2}, $${idx * 11 + 3}, $${idx * 11 + 4}, $${idx * 11 + 5}, $${idx * 11 + 6}, $${idx * 11 + 7}, $${idx * 11 + 8}, $${idx * 11 + 9}, $${idx * 11 + 10}, $${idx * 11 + 11})`).join(', ')}
+                             RETURNING id`,
+                            newChunk.flat()
+                        );
+                    } else {
+                        result = { rows: [] };
+                    }
+                }
 
-                totalInserted += result.rows.length;
+                const inserted = result.rows.length;
+                const skipped = chunk.length - inserted;
+                totalInserted += inserted;
+                totalSkipped += skipped;
                 allIds.push(...result.rows.map(r => r.id));
-                console.log(`Chunk ${chunkNum}: Inserted ${result.rows.length} reports`);
+                console.log(`Chunk ${chunkNum}: Inserted ${inserted} reports, skipped ${skipped} duplicates`);
             } catch (chunkErr) {
                 const msg = chunkErr instanceof Error ? chunkErr.message : String(chunkErr);
                 console.error(`Chunk ${chunkNum} failed:`, msg);
@@ -86,8 +148,8 @@ export const POST: RequestHandler = async ({ request }) => {
             }
         }
 
-        console.log(`Total inserted: ${totalInserted} reports`);
-        return jsonResponse({ success: true, inserted: totalInserted }, 201);
+        console.log(`Total inserted: ${totalInserted} reports, skipped: ${totalSkipped} duplicates`);
+        return jsonResponse({ success: true, inserted: totalInserted, skipped: totalSkipped }, 201);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error('Error inserting batch reports:', message);
