@@ -23,6 +23,11 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 export const POST: RequestHandler = async ({ request }) => {
+	const bearerToken = request.headers.get('Authorization');
+	if (!bearerToken) return jsonResponse({ success: false, error: 'No Bearer Token Provided' }, 401);
+	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix
+	if (key != 'TEMP123!') return jsonResponse({ success: false, error: 'Not a valid key' }, 401);
+
 	try {
 		const body = await request.json();
 		console.log('Report POST body:', body);

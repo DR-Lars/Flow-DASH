@@ -34,6 +34,11 @@ function toNumber(val: unknown): number | null {
 const BATCH_SIZE = 500; // 500 reports per database insert
 
 export const POST: RequestHandler = async ({ request }) => {
+	const bearerToken = request.headers.get('Authorization');
+	if (!bearerToken) return jsonResponse({ success: false, error: 'No Bearer Token Provided' }, 401);
+	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix
+	if (key != 'TEMP123!') return jsonResponse({ success: false, error: 'Not a valid key' }, 401);
+    
 	console.log('Batch report POST endpoint called.');
 	try {
 		const raw = await request.json();
