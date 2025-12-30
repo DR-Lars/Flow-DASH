@@ -28,6 +28,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log('Report POST body:', body);
 
 		const {
+            batch_number,
 			meter_id,
 			ship_name,
 			timestamp,
@@ -42,10 +43,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Insert into database
 		const result = await pool.query(
-			`INSERT INTO report (meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			`INSERT INTO report (batch_number, meter, ship, timestamp, temperature, pressure, mass_flow, air_index, total_quantity, standard_density, raw_density)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id`,
 			[
+                batch_number,
 				meter_id,
 				ship_name,
 				timestamp,
