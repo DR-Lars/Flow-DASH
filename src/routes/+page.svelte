@@ -46,16 +46,28 @@
 		loading = true;
 		error = null;
 		try {
-			const res = await fetch(buildUrl());
+			const res = await fetch(buildUrl(), {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: 'Bearer givemethedata'
+				}
+			});
 			const json = await res.json();
 			if (!json.success) {
 				throw new Error(json.error || 'Failed to fetch data');
 			}
 			data = json.data as Report[];
 			// Populate menu options from current dataset
-			meters = Array.from(new Set(data.map((r) => String(r.meter)))).filter(Boolean).sort();
-			ships = Array.from(new Set(data.map((r) => String(r.ship)))).filter(Boolean).sort();
-			batches = Array.from(new Set(data.map((r) => String(r.batch_number)))).filter(Boolean).sort();
+			meters = Array.from(new Set(data.map((r) => String(r.meter))))
+				.filter(Boolean)
+				.sort();
+			ships = Array.from(new Set(data.map((r) => String(r.ship))))
+				.filter(Boolean)
+				.sort();
+			batches = Array.from(new Set(data.map((r) => String(r.batch_number))))
+				.filter(Boolean)
+				.sort();
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -75,12 +87,17 @@
 	onMount(loadData);
 </script>
 
-<div class="p-4 space-y-4">
+<div class="space-y-4 p-4">
 	<!-- Filters -->
-	<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-5">
 		<div>
-			<label for="meter-select" class="block text-sm mb-1">Meter</label>
-			<select id="meter-select" bind:value={meter_id} class="border rounded w-full p-2" on:change={loadData}>
+			<label for="meter-select" class="mb-1 block text-sm">Meter</label>
+			<select
+				id="meter-select"
+				bind:value={meter_id}
+				class="w-full rounded border p-2"
+				on:change={loadData}
+			>
 				<option value="">All meters</option>
 				{#each meters as m}
 					<option value={m}>{m}</option>
@@ -88,8 +105,13 @@
 			</select>
 		</div>
 		<div>
-			<label for="ship-select" class="block text-sm mb-1">Ship</label>
-			<select id="ship-select" bind:value={ship_name} class="border rounded w-full p-2" on:change={loadData}>
+			<label for="ship-select" class="mb-1 block text-sm">Ship</label>
+			<select
+				id="ship-select"
+				bind:value={ship_name}
+				class="w-full rounded border p-2"
+				on:change={loadData}
+			>
 				<option value="">All ships</option>
 				{#each ships as s}
 					<option value={s}>{s}</option>
@@ -97,8 +119,13 @@
 			</select>
 		</div>
 		<div>
-			<label for="batch-select" class="block text-sm mb-1">Batch</label>
-			<select id="batch-select" bind:value={batch_number} class="border rounded w-full p-2" on:change={loadData}>
+			<label for="batch-select" class="mb-1 block text-sm">Batch</label>
+			<select
+				id="batch-select"
+				bind:value={batch_number}
+				class="w-full rounded border p-2"
+				on:change={loadData}
+			>
 				<option value="">All batches</option>
 				{#each batches as b}
 					<option value={b}>{b}</option>
@@ -106,18 +133,30 @@
 			</select>
 		</div>
 		<div>
-			<label for="from-input" class="block text-sm mb-1">From</label>
-			<input id="from-input" type="datetime-local" bind:value={fromTs} class="border rounded w-full p-2" on:change={loadData} />
+			<label for="from-input" class="mb-1 block text-sm">From</label>
+			<input
+				id="from-input"
+				type="datetime-local"
+				bind:value={fromTs}
+				class="w-full rounded border p-2"
+				on:change={loadData}
+			/>
 		</div>
 		<div>
-			<label for="to-input" class="block text-sm mb-1">To</label>
-			<input id="to-input" type="datetime-local" bind:value={toTs} class="border rounded w-full p-2" on:change={loadData} />
+			<label for="to-input" class="mb-1 block text-sm">To</label>
+			<input
+				id="to-input"
+				type="datetime-local"
+				bind:value={toTs}
+				class="w-full rounded border p-2"
+				on:change={loadData}
+			/>
 		</div>
 	</div>
 
 	<div class="flex items-center gap-2">
-		<button class="px-3 py-2 bg-blue-600 text-white rounded" on:click={loadData}>Apply</button>
-		<button class="px-3 py-2 bg-gray-200 rounded" on:click={resetFilters}>Reset</button>
+		<button class="rounded bg-blue-600 px-3 py-2 text-white" on:click={loadData}>Apply</button>
+		<button class="rounded bg-gray-200 px-3 py-2" on:click={resetFilters}>Reset</button>
 		{#if loading}
 			<span class="text-gray-600">Loading…</span>
 		{/if}
@@ -132,7 +171,8 @@
 			<thead class="bg-gray-50">
 				<tr>
 					<th class="px-3 py-2 text-left">Meter</th>
-					<th class="px-3 py-2 text-left">Ship</th>				<th class="px-3 py-2 text-left">Batch</th>					<th class="px-3 py-2 text-left">Timestamp</th>
+					<th class="px-3 py-2 text-left">Ship</th> <th class="px-3 py-2 text-left">Batch</th>
+					<th class="px-3 py-2 text-left">Timestamp</th>
 					<th class="px-3 py-2 text-left">Temperature</th>
 					<th class="px-3 py-2 text-left">Pressure</th>
 					<th class="px-3 py-2 text-left">Mass Flow</th>
@@ -146,7 +186,8 @@
 				{#each data as row}
 					<tr class="border-t">
 						<td class="px-3 py-2">{row.meter}</td>
-						<td class="px-3 py-2">{row.ship}</td>					<td class="px-3 py-2">{row.batch_number}</td>						<td class="px-3 py-2">{new Date(row.timestamp).toLocaleString()}</td>
+						<td class="px-3 py-2">{row.ship}</td> <td class="px-3 py-2">{row.batch_number}</td>
+						<td class="px-3 py-2">{new Date(row.timestamp).toLocaleString()}</td>
 						<td class="px-3 py-2">{row.temperature ?? ''}</td>
 						<td class="px-3 py-2">{row.pressure ?? ''}</td>
 						<td class="px-3 py-2">{row.mass_flow ?? ''}</td>
