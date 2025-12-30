@@ -30,45 +30,45 @@
 </script>
 
 <div class="container mx-auto p-6">
-	<h1 class="text-3xl font-bold mb-6">Flow DASH - Latest Report</h1>
+	<h1 class="mb-6 text-3xl font-bold">Flow DASH - Latest Report</h1>
 
 	{#if loading}
 		<p class="text-gray-500">Loading...</p>
 	{:else if error}
 		<p class="text-red-600">{error}</p>
 	{:else if latestReport}
-		<div class="bg-white rounded-lg shadow p-6">
+		<div class="rounded-lg bg-white p-6 shadow">
 			<div class="grid grid-cols-2 gap-4">
 				<div>
-					<p class="text-gray-600 text-sm">Timestamp</p>
+					<p class="text-sm text-gray-600">Timestamp</p>
 					<p class="text-lg font-semibold">{new Date(latestReport.timestamp).toLocaleString()}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Temperature (°C)</p>
+					<p class="text-sm text-gray-600">Temperature (°C)</p>
 					<p class="text-lg font-semibold">{latestReport.temperature}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Pressure (bar)</p>
+					<p class="text-sm text-gray-600">Pressure (bar)</p>
 					<p class="text-lg font-semibold">{latestReport.pressure}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Mass Flow</p>
+					<p class="text-sm text-gray-600">Mass Flow</p>
 					<p class="text-lg font-semibold">{latestReport.mass_flow}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Air Index</p>
+					<p class="text-sm text-gray-600">Air Index</p>
 					<p class="text-lg font-semibold">{latestReport.air_index}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Total Quantity</p>
+					<p class="text-sm text-gray-600">Total Quantity</p>
 					<p class="text-lg font-semibold">{latestReport.total_quantity}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Standard Density</p>
+					<p class="text-sm text-gray-600">Standard Density</p>
 					<p class="text-lg font-semibold">{latestReport.standard_density}</p>
 				</div>
 				<div>
-					<p class="text-gray-600 text-sm">Raw Density</p>
+					<p class="text-sm text-gray-600">Raw Density</p>
 					<p class="text-lg font-semibold">{latestReport.raw_density}</p>
 				</div>
 			</div>
