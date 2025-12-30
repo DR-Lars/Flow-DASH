@@ -13,9 +13,14 @@
 
 	onMount(async () => {
 		try {
-			const response = await fetch('/api/report');
+			const response = await fetch('/api/report', {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: 'Bearer TEMP123!'
+				}
+			});
 			const result = await response.json();
-
 			if (result.success && result.data.length > 0) {
 				latestReport = result.data[0]; // First item is the latest (DESC order)
 			} else {

@@ -68,7 +68,12 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ request, url }) => {
+	const bearerToken = request.headers.get('Authorization');
+	if (!bearerToken) return jsonResponse({ success: false, error: 'No Bearer Token Provided' }, 401);
+	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix
+	if (key != 'TEMP123!') return jsonResponse({ success: false, error: 'Not a valid key' }, 401);
+
 	if (!process.env.DATABASE_URL) {
 		return jsonResponse(
 			{ success: false, error: 'DATABASE_URL not set (database not configured)' },
@@ -101,7 +106,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			sql += ' WHERE ' + conditions.join(' AND ');
 		}
 		sql += ' ORDER BY timestamp ASC';
-
+        
+        console.log('Executing SQL:', sql, 'with values:', values);
 		const result = await pool.query(sql, values);
 		return jsonResponse({ success: true, data: result.rows });
 	} catch (error) {

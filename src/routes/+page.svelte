@@ -50,7 +50,7 @@
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: 'Bearer givemethedata'
+					Authorization: 'Bearer TEMP123!'
 				}
 			});
 			const json = await res.json();
