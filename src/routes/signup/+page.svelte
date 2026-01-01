@@ -144,7 +144,7 @@
 
 			<p class="mt-6 text-center text-sm text-gray-600">
 				Already have an account?
-				<a href="/signin" class="font-semibold text-blue-600 hover:underline"> Sign In </a>
+				<a href="/login" class="font-semibold text-blue-600 hover:underline"> Sign In </a>
 			</p>
 		{/if}
 	</div>
