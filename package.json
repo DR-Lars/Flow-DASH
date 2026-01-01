@@ -65,8 +65,12 @@
 		"svelte"
 	],
 	"dependencies": {
+		"better-auth": "^1.4.10",
 		"dotenv": "^17.2.3",
 		"fast-xml-parser": "^5.3.3",
 		"pg": "^8.16.3"
+	},
+	"overrides": {
+		"cookie": "^0.7.0"
 	}
 }
