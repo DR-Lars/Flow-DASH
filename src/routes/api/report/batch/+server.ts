@@ -1,4 +1,4 @@
-import type { RequestHandler } from './$types.ts';
+import type { RequestHandler, RequestEvent } from './$types.ts';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!bearerToken) return jsonResponse({ success: false, error: 'No Bearer Token Provided' }, 401);
 	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix
 	if (key != 'TEMP123!') return jsonResponse({ success: false, error: 'Not a valid key' }, 401);
-    
+
 	console.log('Batch report POST endpoint called.');
 	try {
 		const raw = await request.json();
@@ -245,7 +245,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-export const GET: RequestHandler = async ({ request, url }) => {
+export const GET: RequestHandler = async (event: RequestEvent) => {
+	const { request, url } = event;
 	const bearerToken = request.headers.get('Authorization');
 	if (!bearerToken) return jsonResponse({ success: false, error: 'No Bearer Token Provided' }, 401);
 	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix

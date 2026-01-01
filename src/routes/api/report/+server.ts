@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log('Report POST body:', body);
 
 		const {
-            batch_number,
+			batch_number,
 			meter_id,
 			ship_name,
 			timestamp,
@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request }) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id`,
 			[
-                batch_number,
+				batch_number,
 				meter_id,
 				ship_name,
 				timestamp,
@@ -113,8 +113,8 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			sql += ' WHERE ' + conditions.join(' AND ');
 		}
 		sql += ' ORDER BY timestamp ASC';
-        
-        console.log('Executing SQL:', sql, 'with values:', values);
+
+		console.log('Executing SQL:', sql, 'with values:', values);
 		const result = await pool.query(sql, values);
 		return jsonResponse({ success: true, data: result.rows });
 	} catch (error) {
