@@ -66,6 +66,7 @@
 	],
 	"dependencies": {
 		"better-auth": "^1.4.10",
+		"chart.js": "^4.5.1",
 		"dotenv": "^17.2.3",
 		"fast-xml-parser": "^5.3.3",
 		"pg": "^8.16.3"
