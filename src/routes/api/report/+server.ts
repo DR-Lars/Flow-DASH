@@ -81,7 +81,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	const key = bearerToken.split(' ')[1]; // Removes the 'Bearer' Prefix
 	if (key != 'TEMP123!') return jsonResponse({ success: false, error: 'Not a valid key' }, 401);
 
-	if (!process.env.DATABASE_URL) {
+	if (!env.DATABASE_URL) {
 		return jsonResponse(
 			{ success: false, error: 'DATABASE_URL not set (database not configured)' },
 			500
