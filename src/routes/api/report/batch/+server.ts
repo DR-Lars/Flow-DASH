@@ -1,8 +1,8 @@
 import type { RequestHandler, RequestEvent } from './$types.ts';
 import { Pool } from 'pg';
-import 'dotenv/config';
+import { env } from '$env/dynamic/private';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: env.DATABASE_URL });
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {

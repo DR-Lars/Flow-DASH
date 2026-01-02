@@ -1,8 +1,8 @@
 import type { RequestHandler } from './$types.ts';
 import { Pool } from 'pg';
-import 'dotenv/config';
+import { env } from '$env/dynamic/private';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: env.DATABASE_URL });
 
 const REQUIRED_FIELDS = [
 	'timestamp',
