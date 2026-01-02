@@ -12,7 +12,7 @@ export const auth = betterAuth({
 		enabled: true
 	},
 	database: new Pool({
-		connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/placeholder'
+		connectionString: env.DATABASE_URL || 'postgresql://localhost:5432/placeholder'
 	}),
 	plugins: [sveltekitCookies(getRequestEvent)]
 });
